@@ -19,7 +19,7 @@ import (
 type Version interface {
 	Diagnostics(diags tfdiags.Diagnostics)
 	// PrintVersion returns true if the printing has been done successfully and false otherwise.
-	PrintVersion(version string, versionPrerelease string, platform string, fipsEnabled bool, providerVersions map[string]string) bool
+	PrintVersion(version string, versionPrerelease string, platform string, fipsEnabled bool, providerVersions map[string]string, moduleVersions map[string]string) bool
 }
 
 // NewVersion returns an initialized Version implementation for the given ViewType.
@@ -43,14 +43,14 @@ func (v *VersionMixed) Diagnostics(diags tfdiags.Diagnostics) {
 	v.view.Diagnostics(diags)
 }
 
-func (v *VersionMixed) PrintVersion(version string, versionPrerelease string, platform string, fipsEnabled bool, providerVersions map[string]string) bool {
+func (v *VersionMixed) PrintVersion(version string, versionPrerelease string, platform string, fipsEnabled bool, providerVersions map[string]string, moduleVersions map[string]string) bool {
 	if v.json {
-		return v.printJsonVersion(version, versionPrerelease, platform, fipsEnabled, providerVersions)
+		return v.printJsonVersion(version, versionPrerelease, platform, fipsEnabled, providerVersions, moduleVersions)
 	}
 	return v.printHumanVersion(version, versionPrerelease, platform, fipsEnabled, providerVersions)
 }
 
-func (v *VersionMixed) printJsonVersion(version string, versionPrerelease string, platform string, fipsEnabled bool, providerVersions map[string]string) bool {
+func (v *VersionMixed) printJsonVersion(version string, versionPrerelease string, platform string, fipsEnabled bool, providerVersions map[string]string, moduleVersions map[string]string) bool {
 	finalVersion := version
 	if versionPrerelease != "" {
 		finalVersion = fmt.Sprintf("%s-%s", finalVersion, versionPrerelease)
@@ -61,6 +61,7 @@ func (v *VersionMixed) printJsonVersion(version string, versionPrerelease string
 		Platform:           platform,
 		ProviderSelections: providerVersions,
 		FIPS140Enabled:     fipsEnabled,
+		ModuleSelections:   moduleVersions,
 	}
 	jsonOutput, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
@@ -103,4 +104,5 @@ type versionOutput struct {
 	Platform           string            `json:"platform"`
 	FIPS140Enabled     bool              `json:"fips140,omitempty"`
 	ProviderSelections map[string]string `json:"provider_selections"`
+	ModuleSelections   map[string]string `json:"module_selections"`
 }
