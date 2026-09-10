@@ -6,8 +6,13 @@
 package command
 
 import (
+	"cmp"
 	"crypto/fips140"
+	"maps"
+	"slices"
+	"strings"
 
+	"github.com/opentofu/opentofu/internal/addrs"
 	"github.com/opentofu/opentofu/internal/command/arguments"
 	"github.com/opentofu/opentofu/internal/command/views"
 	"github.com/opentofu/opentofu/internal/getproviders"
@@ -63,19 +68,54 @@ func (c VersionCommand) Execute(view views.Version) int {
 
 	moduleVersions := map[string]string{}
 	if mani, err := modsdir.ReadManifestSnapshotForDir(c.WorkingDir.ModulesDir()); err == nil {
-		// vals := slices.Collect(maps.Values(mani))
-		// slices.SortFunc(vals, func(a, b modsdir.Record) int {
-		// 	return cmp.Compare(strings.Count(a.Key, "."), strings.Count(b.Key, "."))
-		// })
-		for _, r := range mani {
-			if r.VersionStr != "" {
-				moduleVersions[r.SourceAddr] = r.VersionStr
+		vals := slices.Collect(maps.Values(mani))
+		slices.SortFunc(vals, func(a, b modsdir.Record) int {
+			return cmp.Compare(strings.Count(a.Key, "."), strings.Count(b.Key, "."))
+		})
+		resolved := map[string]addrs.ModuleSource{}
+		// source: registry/eks, aws.eks = version,
+		// source: ./modules/hello aws.eks.hello = unversioned
+		for _, m := range vals {
+			rawSrc, err := addrs.ParseModuleSource(m.SourceAddr)
+			if err != nil {
+				continue
+			}
+			if m.Key == "" {
+				resolved[m.Key] = rawSrc
+				continue
+			}
+			parentKey := parentModuleKey(m.Key)
+			parentMS, hasParent := resolved[parentKey]
+
+			var outSrc addrs.ModuleSource
+			if hasParent && parentMS.String() != "" { // true, registry/eks
+				outSrc, _ = addrs.ResolveRelativeModuleSource(parentMS, rawSrc)
+			} else {
+				// = registry/eks
+				outSrc = rawSrc
+			}
+
+			// aws.eks = registry/eks
+			resolved[m.Key] = outSrc
+
+			if m.VersionStr != "" {
+				moduleVersions[outSrc.String()] = m.VersionStr
+			} else {
+				moduleVersions[outSrc.String()] = "unversioned"
 			}
 		}
+
 	}
 
 	if !view.PrintVersion(c.Version, c.VersionPrerelease, c.Platform.String(), fips140.Enabled(), providerVersions, moduleVersions) {
 		return 1
 	}
 	return 0
+}
+
+func parentModuleKey(key string) string {
+	if i := strings.LastIndex(key, "."); i >= 0 {
+		return key[:i]
+	}
+	return ""
 }
