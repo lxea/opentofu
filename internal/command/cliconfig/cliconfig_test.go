@@ -473,16 +473,12 @@ func TestConfig_Merge(t *testing.T) {
 				Methods: []*ProviderInstallationMethod{
 					{Location: ProviderInstallationFilesystemMirror("a")},
 					{Location: ProviderInstallationFilesystemMirror("b")},
+					{Location: ProviderInstallationFilesystemMirror("d")},
 				},
 			},
 			{
 				Methods: []*ProviderInstallationMethod{
 					{Location: ProviderInstallationFilesystemMirror("c")},
-				},
-			},
-			{
-				Methods: []*ProviderInstallationMethod{
-					{Location: ProviderInstallationFilesystemMirror("d")},
 				},
 			},
 		},

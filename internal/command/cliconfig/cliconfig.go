@@ -461,9 +461,20 @@ func (c *Config) Merge(c2 *Config) *Config {
 
 	result.RegistryProtocols = mergeRegistryProtocolConfigs(c2.RegistryProtocols, c.RegistryProtocols)
 
-	if (len(c.ProviderInstallation) + len(c2.ProviderInstallation)) > 0 {
-		result.ProviderInstallation = append(result.ProviderInstallation, c.ProviderInstallation...)
-		result.ProviderInstallation = append(result.ProviderInstallation, c2.ProviderInstallation...)
+	if len(c.ProviderInstallation) > 0 {
+		result.ProviderInstallation = c.ProviderInstallation
+	}
+
+	if len(c2.ProviderInstallation) > 0 {
+		if len(result.ProviderInstallation) == 0 {
+			result.ProviderInstallation = c2.ProviderInstallation
+		} else {
+			for p, pld := range c2.ProviderInstallation[0].DevOverrides {
+				result.ProviderInstallation[0].DevOverrides[p] = pld
+			}
+			result.ProviderInstallation[0].Methods = append(result.ProviderInstallation[0].Methods, c2.ProviderInstallation[0].Methods...)
+			result.ProviderInstallation = append(result.ProviderInstallation, c2.ProviderInstallation[1:]...)
+		}
 	}
 
 	if (len(c.OCIDefaultCredentials) + len(c2.OCIDefaultCredentials)) > 0 {
