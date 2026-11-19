@@ -162,8 +162,16 @@ func (p providerForTest) ConfigureProvider(context.Context, providers.ConfigureP
 	return providers.ConfigureProviderResponse{}
 }
 
-func (p providerForTest) ImportResourceState(context.Context, providers.ImportResourceStateRequest) providers.ImportResourceStateResponse {
-	panic("Importing is not supported in testing context. providerForTest must not be used to call ImportResourceState")
+func (p providerForTest) ImportResourceState(ctx context.Context, r providers.ImportResourceStateRequest) providers.ImportResourceStateResponse {
+	resp := p.internal.ImportResourceState(ctx, r)
+	for _, ir := range resp.ImportedResources {
+		vm := ir.State.AsValueMap()
+		for k, v := range p.overrideValues {
+			vm[k] = v
+		}
+		ir.State = cty.ObjectVal(vm)
+	}
+	return resp
 }
 
 func (p providerForTest) MoveResourceState(context.Context, providers.MoveResourceStateRequest) providers.MoveResourceStateResponse {
